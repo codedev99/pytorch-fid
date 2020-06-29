@@ -12,7 +12,8 @@ Further insights and an independent evaluation of the FID score can be found in 
 **Note that the official implementation gives slightly different scores.** If you report FID scores in your paper, and you want them to be exactly comparable to FID scores reported in other papers, you should use [the official Tensorflow implementation](https://github.com/bioinf-jku/TTUR).
 You can still use this version if you want a quick FID estimate without installing Tensorflow.
 
-**Update:** The weights and the model are now exactly the same as in the official Tensorflow implementation, and I verified them to give the same results (around `1e-8` mean absolute error) on single inputs on my platform. However, due to differences in the image interpolation implementation and library backends, FID results might still differ slightly from the original implementation. A test I ran (details are to come) resulted in `.08` absolute error and `0.0009` relative error. 
+**Update:** The weights and the model are now exactly the same as in the official Tensorflow implementation, and I verified them to give the same results (around `1e-8` mean absolute error) on single inputs on my platform. However, due to differences in the image interpolation implementation and library backends, FID results might still differ slightly from the original implementation. A test I ran (details are to come) resulted in `.08` absolute error and `0.0009` relative error.
+
 
 ## Usage
 
@@ -54,3 +55,7 @@ FID was introduced by Martin Heusel, Hubert Ramsauer, Thomas Unterthiner, Bernha
 
 The original implementation is by the Institute of Bioinformatics, JKU Linz, licensed under the Apache License 2.0.
 See [https://github.com/bioinf-jku/TTUR](https://github.com/bioinf-jku/TTUR).
+
+Forked from https://github.com/mseitzer/pytorch-fid
+
+KID implementation from https://www.kaggle.com/wendykan/demo-mifid-metric-for-dog-image-generation-comp/notebook
