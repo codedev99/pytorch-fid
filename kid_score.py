@@ -214,7 +214,7 @@ def calculate_activation_statistics(files, model, batch_size=50,
     act = get_activations(files, model, batch_size, dims, cuda, verbose)
     mu = np.mean(act, axis=0)
     sigma = np.cov(act, rowvar=False)
-    return mu, sigma
+    return mu, sigma, act
 
 
 def _compute_statistics_of_path(path, model, batch_size, dims, cuda):
@@ -225,10 +225,10 @@ def _compute_statistics_of_path(path, model, batch_size, dims, cuda):
     else:
         path = pathlib.Path(path)
         files = list(path.glob('*.jpg')) + list(path.glob('*.png'))
-        m, s = calculate_activation_statistics(files, model, batch_size,
+        m, s, features = calculate_activation_statistics(files, model, batch_size,
                                                dims, cuda)
 
-    return m, s
+    return m, s, features
 
 
 def calculate_fid_given_paths(paths, batch_size, cuda, dims):
@@ -243,13 +243,64 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims):
     if cuda:
         model.cuda()
 
-    m1, s1 = _compute_statistics_of_path(paths[0], model, batch_size,
+    m1, s1, _ = _compute_statistics_of_path(paths[0], model, batch_size,
                                          dims, cuda)
-    m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size,
+    m2, s2, _ = _compute_statistics_of_path(paths[1], model, batch_size,
                                          dims, cuda)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
 
     return fid_value
+   
+def normalize_rows(x: np.ndarray):
+   """
+   function that normalizes each row of the matrix x to have unit length.
+
+   Args:
+   ``x``: A numpy matrix of shape (n, m)
+
+   Returns:
+   ``x``: The normalized (by row) numpy matrix.
+   """
+   return np.nan_to_num(x/np.linalg.norm(x, ord=2, axis=1, keepdims=True))
+   
+def cosine_distance(features1, features2):
+   # print('rows of zeros in features1 = ',sum(np.sum(features1, axis=1) == 0))
+   # print('rows of zeros in features2 = ',sum(np.sum(features2, axis=1) == 0))
+   features1_nozero = features1[np.sum(features1, axis=1) != 0]
+   features2_nozero = features2[np.sum(features2, axis=1) != 0]
+   norm_f1 = normalize_rows(features1_nozero)
+   norm_f2 = normalize_rows(features2_nozero)
+
+   d = 1.0-np.abs(np.matmul(norm_f1, norm_f2.T))
+   print('d.shape=',d.shape)
+   print('np.min(d, axis=1).shape=',np.min(d, axis=1).shape)
+   mean_min_d = np.mean(np.min(d, axis=1))
+   print('distance=',mean_min_d)
+   return mean_min_d
+
+def calculate_kid_given_paths(paths, batch_size, cuda, dims):
+   """Calculates the KID of two paths"""
+   for p in paths:
+     if not os.path.exists(p):
+         raise RuntimeError('Invalid path: %s' % p)
+
+   block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
+
+   model = InceptionV3([block_idx])
+   if cuda:
+     model.cuda()
+
+   m1, s1, features = _compute_statistics_of_path(paths[0], model, batch_size,
+                                      dims, cuda)
+   m2, s2, features = _compute_statistics_of_path(paths[1], model, batch_size,
+                                      dims, cuda)
+
+   print('m1,m2 shape=',(m1.shape,m2.shape),'s1,s2=',(s1.shape,s2.shape))
+   print('starting calculating FID')
+   fid_value = calculate_frechet_distance(m1, s1, m2, s2)
+   print('done with FID, starting distance calculation')
+   distance = cosine_distance(features1, features2)        
+   return fid_value, distance
 
 
 if __name__ == '__main__':
