@@ -290,9 +290,9 @@ def calculate_kid_given_paths(paths, batch_size, cuda, dims):
    if cuda:
      model.cuda()
 
-   m1, s1, features = _compute_statistics_of_path(paths[0], model, batch_size,
+   m1, s1, features1 = _compute_statistics_of_path(paths[0], model, batch_size,
                                       dims, cuda)
-   m2, s2, features = _compute_statistics_of_path(paths[1], model, batch_size,
+   m2, s2, features2 = _compute_statistics_of_path(paths[1], model, batch_size,
                                       dims, cuda)
 
    print('m1,m2 shape=',(m1.shape,m2.shape),'s1,s2=',(s1.shape,s2.shape))
@@ -304,11 +304,13 @@ def calculate_kid_given_paths(paths, batch_size, cuda, dims):
 
 
 if __name__ == '__main__':
-    args = parser.parse_args()
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+   args = parser.parse_args()
+   os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    fid_value = calculate_fid_given_paths(args.path,
-                                          args.batch_size,
-                                          args.gpu != '',
-                                          args.dims)
-    print('FID: ', fid_value)
+   fid_value, distance = calculate_kid_given_paths(args.path,
+                                       args.batch_size,
+                                       args.gpu != '',
+                                       args.dims)
+   print('FID: ', fid_value)
+   print('Cosine Distance: ', distance)
+   print('KID: ', fid_value / (distance + 1e-14)
