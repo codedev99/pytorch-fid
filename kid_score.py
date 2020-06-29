@@ -63,6 +63,8 @@ parser.add_argument('--dims', type=int, default=2048,
                           'By default, uses pool3 features'))
 parser.add_argument('-c', '--gpu', default='', type=str,
                     help='GPU to use (leave blank for CPU only)')
+parser.add_argument('-m', '--metric', default='kid', type=str
+                    help='Scoring metric to use')
 
 
 def imread(filename):
@@ -307,10 +309,18 @@ if __name__ == '__main__':
    args = parser.parse_args()
    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-   fid_value, distance = calculate_kid_given_paths(args.path,
-                                       args.batch_size,
-                                       args.gpu != '',
-                                       args.dims)
-   print('FID: ', fid_value)
-   print('Cosine Distance: ', distance)
-   print('KID: ', fid_value / (distance + 1e-14)
+   if args.metric == "kid":
+      fid_value, distance = calculate_kid_given_paths(args.path,
+                                          args.batch_size,
+                                          args.gpu != '',
+                                          args.dims)
+      print('FID: ', fid_value)
+      print('Cosine Distance: ', distance)
+      print('KID: ', fid_value / (distance + 1e-14))
+      
+   else:
+      fid_value = calculate_fid_given_paths(args.path,
+                                          args.batch_size,
+                                          args.gpu != '',
+                                          args.dims)
+      print('FID: ', fid_value)
