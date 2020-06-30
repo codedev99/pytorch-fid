@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calculates the Frechet Inception Distance (FID) to evalulate GANs
+"""Calculates the Memorization Informed Frechet Inception Distance (FID) to evalulate GANs
 
 The FID metric calculates the distance between two distributions of images.
 Typically, we have summary statistics (mean & covariance matrix) of one
@@ -12,6 +12,10 @@ distribution given by summary statistics (in pickle format).
 The FID is calculated by assuming that X_1 and X_2 are the activations of
 the pool_3 layer of the inception net for generated samples and real world
 samples respectively.
+
+The MiFID is modified FID. It is calculated by dividing the FID by the
+cosine distance, calculated on the features output by the inception net.
+The MiFID is obtained by using the default metric 'kid'.
 
 See --help to see further details.
 
