@@ -327,13 +327,13 @@ if __name__ == '__main__':
                                                         args.batch_size,
                                                         args.gpu != '',
                                                         args.dims)
-    print('FID: ', fid_value)
-    print('Cosine Distance: ', distance)
-    print('MiFID: ', fid_value / (distance + 1e-14))
+        print('FID: ', fid_value)
+        print('Cosine Distance: ', distance)
+        print('MiFID: ', fid_value / (distance + 1e-14))
 
     else:
         fid_value = calculate_fid_given_paths(args.path,
                                               args.batch_size,
                                               args.gpu != '',
                                               args.dims)
-    print('FID: ', fid_value)
+        print('FID: ', fid_value)
