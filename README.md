@@ -56,6 +56,4 @@ FID was introduced by Martin Heusel, Hubert Ramsauer, Thomas Unterthiner, Bernha
 The original implementation is by the Institute of Bioinformatics, JKU Linz, licensed under the Apache License 2.0.
 See [https://github.com/bioinf-jku/TTUR](https://github.com/bioinf-jku/TTUR).
 
-Forked from https://github.com/mseitzer/pytorch-fid
-
-KID implementation from https://www.kaggle.com/wendykan/demo-mifid-metric-for-dog-image-generation-comp/notebook
+MiFID implementation is taken from a Kaggle notebook by Wendy Kan from the Generative Dog Images competition. See [https://www.kaggle.com/wendykan/demo-mifid-metric-for-dog-image-generation-comp/notebook](https://www.kaggle.com/wendykan/demo-mifid-metric-for-dog-image-generation-comp/notebook)
