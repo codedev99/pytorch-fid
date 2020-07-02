@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calculates the Memorization Informed Frechet Inception Distance (FID) to evalulate GANs
+"""Calculates Frechet Inception Distance (FID) to evalulate GANs
 
 The FID metric calculates the distance between two distributions of images.
 Typically, we have summary statistics (mean & covariance matrix) of one
@@ -13,9 +13,10 @@ The FID is calculated by assuming that X_1 and X_2 are the activations of
 the pool_3 layer of the inception net for generated samples and real world
 samples respectively.
 
-The MiFID is modified FID. It is calculated by dividing the FID by the
-cosine distance, calculated on the features output by the inception net.
-The MiFID is obtained by using the default metric 'kid'.
+MiFID stands for Memorization Informed Frechet Inception Distance.
+It is calculated by dividing the FID by the cosine distance,
+calculated on the features output by the inception net. The MiFID can be
+obtained by passing 'mifid' as the metric argument.
 
 See --help to see further details.
 
@@ -67,7 +68,7 @@ parser.add_argument('--dims', type=int, default=2048,
                           'By default, uses pool3 features'))
 parser.add_argument('-c', '--gpu', default='', type=str,
                     help='GPU to use (leave blank for CPU only)')
-parser.add_argument('-m', '--metric', default='kid', type=str
+parser.add_argument('-m', '--metric', default='fid', type=str,
                     help='Scoring metric to use')
 
 
@@ -223,10 +224,14 @@ def calculate_activation_statistics(files, model, batch_size=50,
     return mu, sigma, act
 
 
-def _compute_statistics_of_path(path, model, batch_size, dims, cuda):
+def _compute_statistics_of_path(path, model, batch_size, dims, cuda, metric='fid'):
     if path.endswith('.npz'):
         f = np.load(path)
-        m, s = f['mu'][:], f['sigma'][:]
+        if metric == 'fid':
+            m, s = f['mu'][:], f['sigma'][:]
+            features = None
+        else:
+            m, s, features = f['mu'][:], f['sigma'][:], f['features'][:]
         f.close()
     else:
         path = pathlib.Path(path)
@@ -269,62 +274,66 @@ def normalize_rows(x: np.ndarray):
    """
    return np.nan_to_num(x/np.linalg.norm(x, ord=2, axis=1, keepdims=True))
    
-def cosine_distance(features1, features2):
-   # print('rows of zeros in features1 = ',sum(np.sum(features1, axis=1) == 0))
-   # print('rows of zeros in features2 = ',sum(np.sum(features2, axis=1) == 0))
-   features1_nozero = features1[np.sum(features1, axis=1) != 0]
-   features2_nozero = features2[np.sum(features2, axis=1) != 0]
-   norm_f1 = normalize_rows(features1_nozero)
-   norm_f2 = normalize_rows(features2_nozero)
+def cosine_distance(features1, features2, verbose=False):
+    """
+    Finds the cosine distance between features.
+    """
+    features1_nozero = features1[np.sum(features1, axis=1) != 0]
+    features2_nozero = features2[np.sum(features2, axis=1) != 0]
+    norm_f1 = normalize_rows(features1_nozero)
+    norm_f2 = normalize_rows(features2_nozero)
 
-   d = 1.0-np.abs(np.matmul(norm_f1, norm_f2.T))
-   print('d.shape=',d.shape)
-   print('np.min(d, axis=1).shape=',np.min(d, axis=1).shape)
-   mean_min_d = np.mean(np.min(d, axis=1))
-   print('distance=',mean_min_d)
-   return mean_min_d
+    d = 1.0-np.abs(np.matmul(norm_f1, norm_f2.T))
+    if verbose:
+        print('d.shape=',d.shape)
+        print('np.min(d, axis=1).shape=',np.min(d, axis=1).shape)
+        
+    mean_min_d = np.mean(np.min(d, axis=1))
+    
+    if verbose:
+        print('distance=',mean_min_d)
+    
+    return mean_min_d
 
-def calculate_kid_given_paths(paths, batch_size, cuda, dims):
-   """Calculates the KID of two paths"""
-   for p in paths:
-     if not os.path.exists(p):
-         raise RuntimeError('Invalid path: %s' % p)
+def calculate_mifid_given_paths(paths, batch_size, cuda, dims):
+    """Calculates the MiFID of two paths"""
+    for p in paths:
+        if not os.path.exists(p):
+            raise RuntimeError('Invalid path: %s' % p)
 
-   block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
+        block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
 
-   model = InceptionV3([block_idx])
-   if cuda:
-     model.cuda()
+        model = InceptionV3([block_idx])
+        if cuda:
+            model.cuda()
 
-   m1, s1, features1 = _compute_statistics_of_path(paths[0], model, batch_size,
-                                      dims, cuda)
-   m2, s2, features2 = _compute_statistics_of_path(paths[1], model, batch_size,
-                                      dims, cuda)
+        m1, s1, features1 = _compute_statistics_of_path(paths[0], model, batch_size,
+                                                        dims, cuda, 'mifid')
+        m2, s2, features2 = _compute_statistics_of_path(paths[1], model, batch_size,
+                                                        dims, cuda, 'mifid')
 
-   print('m1,m2 shape=',(m1.shape,m2.shape),'s1,s2=',(s1.shape,s2.shape))
-   print('starting calculating FID')
-   fid_value = calculate_frechet_distance(m1, s1, m2, s2)
-   print('done with FID, starting distance calculation')
-   distance = cosine_distance(features1, features2)        
-   return fid_value, distance
+    fid_value = calculate_frechet_distance(m1, s1, m2, s2)
+    distance = cosine_distance(features1, features2)
+    
+    return fid_value, distance
 
 
 if __name__ == '__main__':
-   args = parser.parse_args()
-   os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    args = parser.parse_args()
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-   if args.metric == "kid":
-      fid_value, distance = calculate_kid_given_paths(args.path,
-                                          args.batch_size,
-                                          args.gpu != '',
-                                          args.dims)
-      print('FID: ', fid_value)
-      print('Cosine Distance: ', distance)
-      print('KID: ', fid_value / (distance + 1e-14))
-      
-   else:
-      fid_value = calculate_fid_given_paths(args.path,
-                                          args.batch_size,
-                                          args.gpu != '',
-                                          args.dims)
-      print('FID: ', fid_value)
+    if args.metric == "mifid":
+        fid_value, distance = calculate_mifid_given_paths(args.path,
+                                                        args.batch_size,
+                                                        args.gpu != '',
+                                                        args.dims)
+    print('FID: ', fid_value)
+    print('Cosine Distance: ', distance)
+    print('MiFID: ', fid_value / (distance + 1e-14))
+
+    else:
+        fid_value = calculate_fid_given_paths(args.path,
+                                              args.batch_size,
+                                              args.gpu != '',
+                                              args.dims)
+    print('FID: ', fid_value)
